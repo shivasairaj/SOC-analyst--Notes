@@ -1,7 +1,8 @@
 # Module 01 — SOC Fundamentals
 
 **Source material:** Palo Alto Beacon, supplemented with independent research and hands-on lab work
-**Handwritten notes:** [`/notes/module-01-handwritten.pdf`](../notes/module-01-handwritten.pdf)
+**Handwritten notes:** [`/notes/module-01-handwritten.pdf`](../notes/module-01-handwritten.pdf) or https://drive.google.com/drive/folders/1-7-RDTk38OgjX7hIJzDfpPkrzrIyDijr?usp=sharing
+
 **Lab environment used throughout:** Ubuntu Server running Wazuh as SIEM, Windows + Ubuntu VMs as Wazuh agents, Kali Linux as the attacker machine
 
 ---
@@ -390,6 +391,8 @@ The traits that separate a genuinely good SOC from one that just looks good on p
 ## Lab Evidence Checklist
 
 This module references lab work at several points above. Screenshots to be added as they're captured:
+
+--> https://youtu.be/hzavrOTBI1w?si=p70tW9opVukCH61L
 
 - [ ] Wazuh dashboard overview (Section 1 — unified architecture in practice)
 - [ ] Brute-force alert in Wazuh (Section 2 — Identify step)
