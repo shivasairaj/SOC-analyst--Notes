@@ -1,533 +1,398 @@
-<div align="center">
+# Module 01 — SOC Fundamentals
 
-```
-╔══════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║     ░██████╗░██████╗░░█████╗░  ███╗░░░███╗░█████╗░██████╗░      ║
-║     ██╔════╝██╔════╝██╔══██╗  ████╗░████║██╔══██╗██╔══██╗      ║
-║     ╚█████╗░██║░░░░░██║░░██║  ██╔████╔██║██║░░██║██║░░██║      ║
-║     ░╚═══██╗██║░░░░░██║░░██║  ██║╚██╔╝██║██║░░██║██║░░██║      ║
-║     ██████╔╝╚██████╗╚█████╔╝  ██║░╚═╝░██║╚█████╔╝██████╔╝      ║
-║     ╚═════╝░░╚═════╝░╚════╝░  ╚═╝░░░░░╚═╝░╚════╝░╚═════╝░      ║
-║                                                                  ║
-║              MODULE 01 — SECURITY OPERATIONS                     ║
-║              FUNDAMENTALS                                        ║
-║                                                                  ║
-╚══════════════════════════════════════════════════════════════════╝
-```
-
-**These are my raw handwritten notes — typed up and expanded into something worth reading.**  
-No AI summaries. No copy-pasted definitions. Just what I actually understood, in my own words, after sitting down and working through it.
+**Source material:** Palo Alto Beacon, supplemented with independent research and hands-on lab work
+**Handwritten notes:** [`/notes/module-01-handwritten.pdf`](../notes/module-01-handwritten.pdf)
+**Lab environment used throughout:** Ubuntu Server running Wazuh as SIEM, Windows + Ubuntu VMs as Wazuh agents, Kali Linux as the attacker machine
 
 ---
 
-![Module](https://img.shields.io/badge/Module-01%20Fundamentals-0a7c59?style=flat-square&logo=shield&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Complete-success?style=flat-square)
-![Type](https://img.shields.io/badge/Notes-Handwritten%20→%20Expanded-informational?style=flat-square)
-![Level](https://img.shields.io/badge/Level-SOC%20Analyst%20Beginner-blueviolet?style=flat-square)
+## Contents
 
-</div>
-
----
-
-## What this is
-
-This is Module 1 of my SOC Analyst self-study notes. I write everything by hand first — pen, notebook, no shortcuts — and then I expand it here into something that's actually useful as reference material.
-
-The goal isn't to reproduce a textbook. It's to explain *why* things exist the way they do, what problems they solve, and how the pieces connect. If you're studying for a SOC role and you've been stuck on dry slide-deck definitions, this might help.
+1. [The Security Landscape](#1-the-security-landscape)
+2. [Security Operations — The Active Defense Team](#2-security-operations--the-active-defense-team)
+3. [Security Orchestration](#3-security-orchestration)
+4. [SIEM, Threat Intelligence, and the Detection Stack](#4-siem-threat-intelligence-and-the-detection-stack)
+5. [The Six Pillars of a SOC](#5-the-six-pillars-of-a-soc)
+6. [Metrics — Why Most of Them Lie to You](#6-metrics--why-most-of-them-lie-to-you)
+7. [Reporting and Executive Communication](#7-reporting-and-executive-communication)
+8. [Module Summary](#8-module-summary)
+9. [References](#references)
 
 ---
 
-## Table of contents
+## 1. The Security Landscape
 
-- [The security landscape](#1-the-security-landscape)
-- [What SecOps actually is](#2-what-secops-actually-is)
-- [SecOps management and implementation](#3-secops-management-and-implementation)
-- [Security orchestration](#4-security-orchestration)
-- [Key terminology](#5-key-terminology)
-- [SOC elements — the six pillars](#6-soc-elements--the-six-pillars)
-- [Business pillar deep-dive](#7-business-pillar-deep-dive)
-- [Metrics — the right ones and the dangerous ones](#8-metrics--the-right-ones-and-the-dangerous-ones)
-- [What a good SOC actually looks like](#9-what-a-good-soc-actually-looks-like)
+Every organization that has anything worth stealing — data, money, reputation, customer trust — needs some function whose entire job is defending it. That function is Security Operations, or SecOps. It exists because the alternative, no dedicated defense function at all, has historically gone very badly for a lot of companies.
+
+For a long time, organizations handled security reactively. Buy a firewall here, an antivirus there, maybe a vulnerability scanner if budget allows, and hope it's enough. This is what's referred to as a collection of point solutions — individual tools bought to solve individual problems, with little to no coordination between them. The shift happening across the industry right now is away from that scattered approach and toward a single, deliberate structure: a dedicated SecOps function managing one unified security architecture.
+
+A useful way to picture the security landscape is as a battlefield map. It isn't just "the company's computers" — it's everything that touches the organization's digital footprint:
+
+```mermaid
+flowchart TD
+    ORG((Organization))
+    TECH[Technologies<br/>cloud, SaaS, devices]
+    REMOTE[Remote workers<br/>internet-connected]
+    AI[AI tools & automation]
+    NET[The internet]
+    ATT[Attackers]
+
+    TECH --> ORG
+    REMOTE --> ORG
+    AI --> ORG
+    NET --> ORG
+    ATT -.probing.-> ORG
+```
+
+What makes today's version of this map different from, say, ten years ago is the shift in shape. Organizations used to operate mostly inside a defined perimeter — a building, a network, a set of company-owned machines. That perimeter has effectively dissolved. The modern landscape is:
+
+- **More cloud-based** — workloads and data live across AWS, Azure, GCP, and dozens of SaaS platforms instead of a single data center
+- **More remote** — employees connect from home networks, coffee shops, and personal devices, all outside traditional network boundaries
+- **More connected** — APIs, third-party integrations, and IoT devices multiply the number of systems that can be an entry point
+- **More AI-driven** — both defenders and attackers are now using AI/ML tooling, which changes the speed and scale of both detection and attack
+- **More vulnerable** — every one of the above points adds attack surface; there are simply more doors to check
+
+### What's actually at stake
+
+**The biggest risk: a catastrophic breach.** This isn't abstract — a serious breach can cause several compounding forms of damage simultaneously:
+
+| Consequence | What it actually looks like |
+|---|---|
+| Data theft (exfiltration) | Customer PII, intellectual property, or credentials leave the organization without authorization |
+| Financial loss | Direct costs (incident response, legal, regulatory fines) plus indirect costs (downtime, lost business) |
+| Reputation damage | Public trust erodes — sometimes permanently, especially in regulated industries |
+| Loss of customers | Churn following a publicized breach, especially in B2B and financial services |
+| Legal penalties | GDPR, HIPAA, PCI-DSS and similar frameworks carry real financial and legal consequences for non-compliance |
+
+The note worth internalizing here: **one major breach can undo years of accumulated trust.** A company can do everything right for a decade and still be defined by a single bad incident — which is exactly why SecOps as a function exists, and why it's treated as a continuous, never-finished job rather than a project with an end date.
+
+### Why organizations struggle
+
+Most organizations don't fail at security because they don't care. They fail because of structural problems that compound over time:
+
+- **Alert fatigue** — too many security alerts, most of them low-value, drowning out the ones that matter
+- **Tool sprawl without integration** — a dozen security tools that don't talk to each other, each requiring separate manual review
+- **Slow incident response** — by the time a human notices and acts, the attacker has had time to move
+- **Skills shortage** — there's a well-documented global shortage of trained security analysts, and most teams are understaffed relative to their alert volume
+
+Without structure, security becomes chaotic — alerts pile up, nobody owns the response, and the organization is reacting to whatever is loudest instead of whatever is most dangerous.
+
+### What good SecOps is actually trying to achieve
+
+The target objective for any SecOps function comes down to five things: detect threats early, respond quickly, reduce damage, protect sensitive data, and maintain business continuity. Every tool, every process, and every metric discussed later in this document exists in service of those five outcomes — nothing else really matters if these aren't being achieved.
+
+To prove it's achieving them, a security team has to produce concrete deliverables: continuous monitoring, incident reports, threat analysis, risk assessments, and a demonstrably improving security posture over time. "Trust us, we're handling it" isn't good enough — there has to be evidence.
 
 ---
 
-## 1. The security landscape
+## 2. Security Operations — The Active Defense Team
 
-**Think of it like a battlefield map.**
+If the security landscape is the battlefield, SecOps is the standing army. It's the team (or, in smaller organizations, sometimes a single overworked person) whose job is to actively defend the organization rather than just configure tools and hope.
 
-The security landscape is the total picture of everything you're defending, everything that's attacking you, and all the conditions in between. It includes your own organizations, the technologies you're running, your users (including remote workers), AI tools, automation pipelines — and attackers who are actively studying all of it.
+Their scope of monitoring covers essentially everything that can be compromised:
 
-The reason "landscape" is the right word: it changes constantly. A hill that was defensible last year has a road through it now. New exposure opens up just from changing how your team works.
+```mermaid
+flowchart LR
+    SOC[SecOps Team]
+    SOC --> NET[Networks]
+    SOC --> SRV[Servers]
+    SOC --> EP[Endpoints<br/>laptops, desktops]
+    SOC --> DB[Databases]
+    SOC --> APP[Applications]
+    SOC --> WEB[Websites]
+    SOC --> CLOUD[Cloud]
+```
 
-**Today's landscape vs. what it used to be:**
+Their actual job, day to day, breaks into four repeating responsibilities: identify threats, investigate suspicious activity, mitigate attacks, and continuously improve security. This isn't a one-time checklist — it's a loop that never stops, because new threats and new vulnerabilities show up constantly.
 
-| Then | Now |
-|------|-----|
-| On-prem mostly | Heavily cloud-based |
-| Office-bound workers | Remote and hybrid everywhere |
-| Tools mostly siloed | Deeply connected, APIs everywhere |
-| Humans driving most processes | AI and automation in the loop |
-| Smaller, slower attack surface | Larger, faster, more vulnerable |
+### The detection-to-resolution loop
 
-The shift isn't just technical. It's philosophical. Organizations used to buy a firewall, an AV solution, maybe a SIEM, and call it done. A collection of point solutions with no unified view. What we're moving toward — and what SecOps represents — is *deliberate structure*. A unified security architecture managed by a dedicated team, instead of tools sitting in silos hoping someone is watching.
+This loop is worth understanding in detail because it's the actual operational rhythm of any SOC, junior analyst or otherwise.
 
-### What the landscape encompasses
+```mermaid
+flowchart LR
+    A[1. Identify] --> B[2. Investigate]
+    B --> C[3. Mitigate]
+    C --> D[4. Improve]
+    D -.-> A
+```
 
-**Risks — specifically, the catastrophic ones**
+**Step 1 — Identify.** This means recognizing a suspicious alert in the first place. A textbook example: an unusual login attempt at 3 AM, from an account that normally only logs in during business hours, from a country the user has never logged in from before. The action at this stage is simple — open an incident. Don't ignore it, don't assume it's nothing.
 
-My notes highlighted something worth sitting with: *one major breach can destroy years of trust.* That's the worst-case that drives everything else. The knock-on effects of a serious breach include:
+**Step 2 — Investigate.** This is where the actual analytical work happens. The analyst pulls logs, examines network traffic, and looks at user behavior, asking a specific set of questions:
 
-- Data theft (exfiltration of PII, credentials, IP)
-- Direct financial loss
-- Reputation damage that doesn't heal quickly
-- Loss of customers and partners
-- Legal penalties and regulatory action
+- Is this real, or is it a false alarm?
+- Where did it start?
+- What systems are affected?
 
-**Problems organizations actually face day-to-day**
+This step is the one most often rushed under pressure — and rushing it is exactly how real incidents get missed or misclassified, which is a theme that comes back later under metrics.
 
-Before you can appreciate what a SOC does, you have to understand what the alternative looks like:
+**Step 3 — Mitigate.** Once the investigation confirms something real is happening, the team acts to stop it. Common mitigation actions include blocking the malicious IP address, isolating the infected system from the rest of the network so it can't spread, and resetting any compromised passwords or credentials.
 
-- Too many alerts, no way to prioritize
-- Security tools that don't talk to each other
-- Slow incident response because nobody has a clear process
-- Lack of skilled analysts who can actually investigate
+**Step 4 — Continuously improve.** After the immediate fire is out, the work isn't done. The team should update detection rules so the same attack triggers faster next time, work on improving response time, learn from what went wrong (or what went right), and generally strengthen the defense based on what was just learned. Skipping this step is how organizations end up fighting the same incident repeatedly.
 
-Without structure, security becomes reactive and chaotic. You're always behind. A SOC exists to solve this.
+### Lab notes
 
-**Target objective**
+I built this exact loop end-to-end in my home lab rather than just reading about it. Using my Kali box as the attacker, I ran a brute-force login attempt against the Windows agent monitored by Wazuh. The Wazuh SIEM fired an alert almost immediately. From there I went through the investigation step manually — pulling the raw alert, checking the source IP and the targeted account — and then wrote a custom Wazuh decoder to reduce false positives on that rule going forward. That last part is the "continuously improve" step in practice: the first version of the rule was noisy, so the rule itself had to evolve.
 
-The mission is clear even if the execution is complex:
-
-1. Detect threats early — before they become incidents
-2. Respond quickly — reduce dwell time (how long an attacker sits undetected)
-3. Reduce damage when something does happen
-4. Protect sensitive data
-5. Maintain business continuity
+📸 *[Add: screenshot of the Wazuh alert showing the brute-force detection]*
+📸 *[Add: screenshot of the custom decoder/rule I wrote, with a short explanation of what it changed]*
 
 ---
 
-## 2. What SecOps actually is
+## 3. Security Orchestration
 
-**SecOps (Security Operations) is the active defense team of an organization.**
+Once a SOC has more than a couple of tools running, a new problem appears: those tools don't naturally talk to each other. A firewall doesn't know what the SIEM saw. The SIEM doesn't automatically tell the endpoint protection tool to quarantine a machine. Without something tying them together, every response action becomes a manual, multi-tool process — which is slow, error-prone, and doesn't scale as alert volume grows.
 
-It's not a tool. It's not a product. It's a function — a team with a job. Their job is to:
+**Security orchestration** is the answer to that problem: connecting different security tools together through automated workflows, so instead of working in isolation, tools communicate with each other, share data, follow automated response steps, and reduce the amount of manual effort required from a human analyst. The end result is that security teams respond to incidents faster and more consistently.
 
-- Identify threats before they cause damage
-- Investigate suspicious activity and determine if it's real
-- Mitigate active attacks
-- Continuously improve the security posture based on what they learn
+### What changes with automation
 
-SecOps professionals monitor a wide surface:
+The difference between a manual and an automated SOC workflow is stark enough that it's worth walking through both side by side.
 
+```mermaid
+flowchart TD
+    subgraph M["Manual workflow — before automation"]
+        direction TB
+        m1[Analyst notices alert] --> m2[Logs into Tool 1]
+        m2 --> m3[Logs into Tool 2, Tool 3...]
+        m3 --> m4[Manually collects logs]
+        m4 --> m5[Manually analyzes data]
+        m5 --> m6[Manually blocks IP]
+    end
+
+    subgraph A["Automated workflow — after orchestration"]
+        direction TB
+        a1[Alert triggers workflow] --> a2[System auto-collects logs]
+        a2 --> a3[System checks threat intel]
+        a3 --> a4[System verifies infected machine]
+        a4 --> a5[Incident report auto-generated]
+    end
 ```
-Networks → Servers → Endpoints (laptops, desktops) 
-→ Databases → Applications → Websites → Cloud infrastructure
-```
 
-Everything that an attacker might touch, a SecOps analyst is watching.
+The manual version isn't just slower, it's a genuine waste of skilled analyst time on work a script could do. The automated version compresses what might take 30-60 minutes of manual tool-hopping into something that finishes in minutes, freeing the analyst to spend their time on judgment calls rather than data collection.
 
-### What they deliver
+The measurable benefits of doing this well: reduced human workload, reduced alert fatigue (because low-confidence alerts get auto-triaged instead of all landing in a human's queue), increased response speed, and improved accuracy (because the automation doesn't get tired or distracted the way a human reviewing alert #340 of the day might).
 
-This is the actual output of a security operations function:
+### The vocabulary that matters here
 
-- Continuous monitoring (24/7 in mature organizations)
-- Incident reports
-- Threat analysis
-- Risk assessments
-- Measurable improvements to security posture
+These four terms come up constantly in any SOC or detection engineering context, and they're often used loosely, so it's worth being precise:
+
+| Term | Definition | Concrete example |
+|---|---|---|
+| **Security automation** | Using technology to perform security tasks without human intervention | Automatically blocking a known-malicious IP the moment it's flagged by threat intel |
+| **Playbooks** | Predefined, step-by-step procedures for handling specific incident types | "If ransomware is detected → isolate the endpoint → alert the admin → trigger backup restore" |
+| **Integration** | The mechanism by which different tools connect and exchange data — usually REST APIs, webhooks, or purpose-built connectors | A SIEM pushing alert data to a messaging platform via webhook |
+| **Ingestion** | The process of pulling data from many different sources into one central platform | Firewall logs, endpoint alerts, cloud activity logs, and threat intel feeds all flowing into a single SIEM |
+
+Playbooks specifically are worth dwelling on, because they solve three very concrete operational problems: they standardize the response so two different analysts handling the same incident type act the same way, they eliminate confusion about who does what during a high-stress incident, and they speed up handling because nobody has to improvise a process under pressure.
+
+### Lab notes
+
+I implemented a small but real piece of orchestration in my lab: integrating Wazuh with Telegram so that alerts get pushed directly to my phone the moment a rule fires, instead of requiring me to be actively watching the dashboard. It's a tiny example compared to enterprise SOAR platforms wiring together a dozen tools, but the underlying mechanism — integration via webhook, automated notification instead of manual checking — is the same principle at a smaller scale.
+
+📸 *[Add: screenshot of a Wazuh alert arriving in Telegram]*
 
 ---
 
-## 3. SecOps management and implementation
+## 4. SIEM, Threat Intelligence, and the Detection Stack
 
-SecOps isn't just a security team. It's a **collaborative effort** between security teams and operations teams — integrating tools, processes, and technology to protect the organization's digital environment.
+This section covers the core technology components that make detection possible in the first place. These pieces are the backbone of orchestration systems — automation has nothing to orchestrate without them feeding it data.
 
-Who it protects:
+```mermaid
+flowchart LR
+    FW[Firewall logs]
+    EP[Endpoint alerts]
+    CL[Cloud activity logs]
+    TI_FEED[Threat intel feeds]
 
-- Internal users (employees)
-- Partners
-- Customers
-- Systems and infrastructure
-- Data at rest and in transit
+    FW --> SIEM
+    EP --> SIEM
+    CL --> SIEM
+    TI_FEED --> SIEM
 
-The key insight from my notes: *security becomes a shared responsibility across the organization.* SecOps isn't just something the security team does. It affects how everyone operates.
-
-**Ultimate goal:** Improve the organization's overall security posture — not just respond to incidents, but reduce the probability and impact of future ones.
-
-### How SecOps protects against security issues — the four-step model
-
-This is the core operational loop. Every incident response follows some version of this:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   1. IDENTIFY          Recognize suspicious alerts          │
-│      ──────────────   ───────────────────────────────────  │
-│      Example:          Unusual login attempt at 3AM         │
-│      Action:           Open an incident ticket              │
-│                                                             │
-│   2. INVESTIGATE       Analyze logs, traffic, behavior      │
-│      ──────────────   ───────────────────────────────────  │
-│      Questions:        Is this real or a false alarm?       │
-│                        Where did it originate?              │
-│                        What systems are affected?           │
-│                                                             │
-│   3. MITIGATE          Stop the attack, contain damage      │
-│      ──────────────   ───────────────────────────────────  │
-│      Examples:         Block the malicious IP               │
-│                        Isolate infected endpoint            │
-│                        Reset compromised credentials        │
-│                                                             │
-│   4. CONTINUOUSLY      Don't just fix — improve             │
-│      IMPROVE           Update detection rules               │
-│      ──────────────   Refine response playbooks             │
-│                        Learn from what you missed           │
-│                        Strengthen overall defenses          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+    SIEM[("SIEM<br/>centralized analysis")] --> OUT[Alerts + centralized monitoring]
 ```
 
-That last step — continuous improvement — is what separates mature SecOps from reactive firefighting. You don't just close the incident. You close the gap that created it.
+### SIEM — Security Information and Event Manager
 
----
+A SIEM collects and analyzes logs from across the entire organization in one place. Its core functions are detecting suspicious patterns across that aggregated data, generating alerts when something looks wrong, and centralizing monitoring so analysts aren't checking ten different dashboards.
 
-## 4. Security orchestration
+The simplest mental model for what a SIEM does: **it's a brain that sees everything.** Individual tools see their own slice of activity — the firewall sees network traffic, the endpoint agent sees what's happening on one machine. The SIEM is the only component with visibility across all of it simultaneously, which is precisely what makes it possible to catch attacks that span multiple systems (something no single point tool could detect on its own).
 
-**Security orchestration = connecting your tools so they work together instead of in isolation.**
+### Threat Intelligence
 
-Previously, a SecOps engineer would manually:
+A SIEM alert on its own doesn't tell you whether something is dangerous — it tells you something happened. Threat intelligence is the context layer that answers the actual question an analyst cares about: **"Is this alert really dangerous?"**
 
-1. Check alerts
-2. Log into 3-4 different tools
-3. Collect logs from each
-4. Manually analyze the data
-5. Go back and block IPs or take action
+It does this by providing structured information about known-bad indicators:
 
-This is slow, error-prone, and doesn't scale. It's also a morale killer — experienced analysts burning hours on mechanical tasks.
-
-With orchestration, the system does this automatically:
-
-```
-Alert fires → threat intel checked → infected machine verified 
-           → incident report generated — in minutes, not hours
-```
-
-**Real-world benefits:**
-
-| Manual | Orchestrated |
-|--------|-------------|
-| Hours to respond | Minutes to respond |
-| Human fatigue leads to missed alerts | Consistent, tireless |
-| Analysts doing mechanical work | Analysts doing actual investigation |
-| Context scattered across tools | Unified view, enriched data |
-
-The four key outcomes of automation (starred in my notes as important):
-
-- Reduces human workload
-- Reduces alert fatigue (fewer false positives slipping through)
-- Increases response speed
-- Improves accuracy
-
----
-
-## 5. Key terminology
-
-These are the terms my notes flagged as important. I've expanded each one beyond the definition to explain *why it matters*.
-
-### 1. Security automation
-
-Using technology to perform security tasks automatically, without human intervention.
-
-**Example:** Auto-block a malicious IP when threat intelligence confirms it's active.
-
-**Why it matters:** Human analysts can't review every alert. Automation handles the known, repetitive stuff so humans can focus on the unknown and complex.
-
-### 2. Playbooks
-
-Predefined, step-by-step procedures for handling specific types of incidents.
-
-**Example:**
-```
-If ransomware is detected:
-   → Isolate the endpoint immediately
-   → Alert the admin
-   → Initiate backup restore
-   → Begin forensic investigation
-```
-
-Playbooks ensure:
-- **Standardized response** — no analyst improvising under pressure
-- **No confusion** — everyone knows exactly what to do
-- **Faster handling** — no time lost on "what do we do first?"
-
-**The deeper point:** Without playbooks, two analysts handling the same incident type will handle it differently. One might isolate the endpoint first. The other might try to capture network traffic first. Inconsistency creates gaps.
-
-### 3. Integration
-
-How different security tools connect and exchange data.
-
-Typically done using:
-- REST APIs
-- Webhooks
-- Native connectors
-
-**Why it matters:** A SIEM that can't talk to your EDR means your alerts have no endpoint context. Integration = visibility. Silos = blind spots.
-
-### 4. Ingestion
-
-The process of collecting data from multiple sources into one platform for analysis.
-
-Sources being ingested:
-- Firewall logs
-- Endpoint alerts
-- Cloud activity logs
-- Threat intelligence feeds
-
-**The key insight:** You can't detect what you can't see. Ingestion is how you build visibility.
-
-### 5. SIEM (Security Information and Event Manager)
-
-The central brain of a SOC. It:
-
-- Collects and analyzes logs from across the entire organization
-- Detects suspicious patterns by correlating events
-- Generates alerts
-- Centralizes monitoring into one pane of glass
-
-> "It's a brain that sees everything." — my actual note on this
-
-The SIEM is why alert volume is both a SIEM's greatest feature and its most common problem. It sees everything — including enormous amounts of noise.
-
-### 6. Threat intelligence
-
-Contextual information that helps you understand *what* you're dealing with.
-
-Provides data on:
 - Malicious IP addresses
 - Malware hashes
 - Phishing domains
-- Attack techniques (TTPs — Tactics, Techniques, Procedures)
+- Known attack techniques
 
-**The core question it answers:** *"Is this alert actually dangerous?"*
+Without threat intel, an analyst is investigating every alert from a position of "I have no idea if this IP is dangerous." With it, an alert involving an IP already flagged in a threat feed gets prioritized immediately, while one involving an unknown but benign-looking IP can be deprioritized.
 
-Without threat intel, an alert is just a flag. With it, you know whether that flag represents a known-bad actor, a new TTP, or a false positive.
+### Endpoint Security
 
-### 7. Endpoint security
+Endpoint security protects the individual devices — laptops, desktops, servers — where users and processes actually do their work. It's specifically focused on detecting malware and suspicious behavior happening on the device itself, as opposed to the network security layer, which is watching traffic between devices.
 
-Protection for the devices on your network — laptops, desktops, servers.
+### Network Security
 
-Detects:
-- Malware
-- Suspicious behavior (process injection, privilege escalation, lateral movement attempts)
+Network security monitors traffic moving across the network rather than activity on individual machines. Its job is to block malicious traffic outright, detect intrusion attempts as they happen, and flag unusual communication patterns — for example, a workstation suddenly trying to talk to a server it's never communicated with before.
 
-### 8. Network security
+The distinction between endpoint and network security matters because they catch different things. A piece of malware that's already running locally on a machine might be invisible to network monitoring if it isn't generating unusual traffic yet — that's what endpoint detection is for. Conversely, an attacker moving laterally across the network between two compromised machines might not trigger anything endpoint-based if neither machine individually looks compromised — that's what network monitoring is for. A mature SOC needs both, because each one covers a blind spot in the other.
 
-Monitors and controls what travels across your network.
+### Lab notes
 
-Functions:
-- Blocks malicious traffic
-- Detects intrusion attempts
-- Monitors for unusual communication patterns (C2 beaconing, data exfiltration)
+Wazuh is functioning as my SIEM in this home lab setup — it's pulling in events from both the Windows and Ubuntu agents into a single dashboard, which is the "brain that sees everything" idea actually running, just at a scale of two machines instead of two thousand. The core mechanics are identical to an enterprise deployment; only the scale differs.
+
+📸 *[Add: screenshot of the Wazuh agent list showing both agents reporting in]*
+📸 *[Add: screenshot of a centralized alert view pulling from multiple log sources]*
 
 ---
 
-## 6. SOC elements — the six pillars
+## 5. The Six Pillars of a SOC
 
-My notes framed this clearly: **a SOC is not just a room full of screens.** It's a structured system built around six pillars that support the business.
+A common misconception about a SOC is that it's primarily a technology purchase — buy the right SIEM, the right EDR, the right firewall, and you have a SOC. In reality, a SOC is a structured organizational system, and the technology is only one of six pillars holding it up. The other five — business alignment, people, processes, interfaces, and visibility — are arguably harder to get right than the technology, because they require organizational discipline rather than just a procurement budget.
 
-The pillars divide responsibilities so every stakeholder understands their role. They all connect back to one core idea:
+```mermaid
+flowchart TD
+    BIZ[1. Business<br/>the foundation]
+    PPL[2. People]
+    PROC[3. Processes]
+    INT[4. Interfaces]
+    VIS[5. Visibility]
+    TECH[6. Technology]
 
-> **The SOC exists to support the business. If the SOC does not reduce business risk, it is failing its purpose.**
-
-The six pillars:
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│  1. BUSINESS      Why the SOC exists, how success           │
-│                   is measured, governance                    │
-│                                                              │
-│  2. PEOPLE        Analysts, engineers, threat hunters,       │
-│                   management — the humans in the loop        │
-│                                                              │
-│  3. PROCESSES     How incidents are handled, playbooks,      │
-│                   escalation paths, handoffs                 │
-│                                                              │
-│  4. INTERFACES    How the SOC communicates internally        │
-│                   and externally                             │
-│                                                              │
-│  5. VISIBILITY    What the SOC can see — coverage            │
-│                   across all attack surfaces                 │
-│                                                              │
-│  6. TECHNOLOGY    The tools: SIEM, EDR, SOAR, TIP,          │
-│                   firewalls, network monitoring              │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+    BIZ --> SOC((SOC))
+    PPL --> SOC
+    PROC --> SOC
+    INT --> SOC
+    VIS --> SOC
+    TECH --> SOC
+    SOC --> GOAL[Reduce business risk]
 ```
 
----
+These six pillars divide responsibility clearly enough that every stakeholder — from the SOC manager down to the on-call analyst — understands their specific role. And they all connect back to one governing idea: **the SOC exists to support the business.** This isn't a soft, feel-good statement — it has a hard practical implication. If the SOC isn't measurably reducing business risk, it is, by definition, failing its purpose, no matter how sophisticated its tooling looks on paper.
 
-## 7. Business pillar deep-dive
+### Pillar 1 — Business (the foundation)
 
-This pillar defines the foundation. Three root elements:
+Everything else in the SOC sits on top of this pillar. It answers three foundational questions: why does the SOC exist, how is it managed, and how is success measured. It's built from three core components — mission, governance, and planning — supported by practical resourcing decisions around budget, staffing, and facility.
 
-**1. Why the SOC exists** — the mission  
-**2. How it is managed** — governance  
-**3. How success is measured** — metrics
+**Mission — "What are we doing?"**
 
-### Mission — "What are we doing?"
+The mission statement defines why the SOC exists, what it protects, and what results it must deliver. A working mission statement answers what actions will be taken, how they'll be executed, and what value is actually provided to the business. A concrete example of a real mission statement: *"Detect, analyze, and respond to threats to protect company data and ensure business continuity."* Notice this isn't vague — it names the action (detect, analyze, respond), the object (threats), and the outcome (protected data, continuity).
 
-The mission statement answers:
-- Why does this SOC exist?
-- What does it protect?
-- What results does it need to deliver?
+**Governance — "How do we manage it?"**
 
-**It answers:** What actions will be taken? How will they be executed? What value is provided to the business?
+Governance defines the policies, standards, compliance requirements, and oversight mechanisms the SOC operates under. Its job is to ensure rules are actually followed, responsibilities are clearly assigned (so there's no ambiguity about who handles what), and risk is managed properly rather than ad hoc.
 
-**Example mission statement from my notes:**
-> *"Detect, analyze, and respond to threats to protect company data and ensure business continuity"*
+**Planning — "How will we do it?"**
 
-That's a tight, measurable mission. Every decision the SOC makes should pass the question: *does this serve the mission?*
+Planning defines the strategy, the roadmap, incident response plans, and technology adoption decisions. In effect, planning is the mechanism that converts the abstract mission into concrete, schedulable action.
 
-### Governance — "How do we manage it?"
-
-Governance defines:
-- Policies (what you must do)
-- Standards (how you do it)
-- Compliance requirements (what external bodies require)
-- Oversight (who ensures it's happening)
-
-It ensures:
-- Rules are followed consistently
-- Responsibilities are clear
-- Risk is managed properly
-
-Without governance, you get inconsistency. Two analysts handle the same alert type differently. No one enforces update cadence on detection rules. Compliance audits become painful.
-
-### Planning — "How will we do it?"
-
-Planning converts the mission into action. It defines:
-- Strategy
-- Roadmap
-- Incident response plans
-- Technology adoption decisions
-
-**Important metric note — what metrics actually do**
-
-Metrics show whether the SOC is effective. But here's what my notes emphasized and what I think gets ignored constantly:
-
-> **Not all metrics are good. Poor metrics drive wrong behavior.**
+> **A note on sourcing:** the "Six Pillars" framework taught here closely tracks a model originally published by Palo Alto Networks (see reference 3 below), which breaks a SOC down along these same lines — business, people, process, technology, with visibility and interfaces as supporting structural elements. Readers who want the full enterprise-grade treatment of all six pillars should read that source directly; this document focuses depth on the Business and Metrics pillars since those are the two most commonly underappreciated by newer analysts.
 
 ---
 
-## 8. Metrics — the right ones and the dangerous ones
+## 6. Metrics — Why Most of Them Lie to You
 
-This section hit different. Most "intro to SOC" material lists metrics and moves on. My notes went deeper on why certain metrics are actively harmful.
+This is, in my opinion, the single most counterintuitive and most important section in this entire module. The intuitive assumption most people make — including a lot of working analysts — is that more data, faster response, and higher volume must mean better security. Almost none of that intuition survives contact with how SOCs actually get gamed by their own metrics.
 
-### Dangerous metrics
+### Metrics that actively mislead
 
-**1. Mean Time to Respond (MTTR) — used wrong**
+**Mean-Time-To-Respond (MTTR).** In a Network Operations Center, speed genuinely is everything — a slow response to a performance issue is unambiguously bad. In a SOC, this logic breaks down. Rushing an investigation reduces its quality. An analyst under pressure to hit an MTTR target may close incidents quickly without doing a full analysis — meaning the metric improves while actual security gets worse. The short version: **speed is not the same thing as security.**
 
-Speed is important. But in a SOC, rushing investigations reduces quality. Analysts close incidents quickly without full analysis. Speed ≠ security.
+**Number of incidents handled.** If analysts are ranked or rewarded by sheer volume of incidents closed, a predictable and rational (if undesirable) behavior emerges: they start cherry-picking the easy, fast-to-close cases, while complex, time-consuming, and potentially more dangerous cases get pushed aside or rushed. The metric optimizes for the wrong thing.
 
-The incentive problem: if analysts are measured purely on MTTR, they're incentivized to mark incidents as resolved before they've done thorough investigation.
+**Number of firewall rules.** Ten thousand carefully configured firewall rules mean precisely nothing if Rule #1 reads "allow everything." This sounds like an extreme, almost comedic example, but it's a real and common misconfiguration — a permissive rule placed early in the rule order can silently neutralize everything that comes after it.
 
-**2. Number of incidents handled**
+**Number of SIEM feeds.** More data does not automatically mean better security. If the ingested data isn't actually being used — reviewed, correlated, acted on — it's not intelligence, it's just noise sitting in storage.
 
-If analysts are ranked on volume:
-- They may choose easy cases to boost their numbers
-- Complex, high-severity cases get ignored or deprioritized
+### Metrics that build real confidence
 
-**3. Number of firewall rules**
+There are two genuinely useful categories of metrics, and they ask fundamentally different questions.
 
-10,000 firewall rules means nothing if Rule #1 says "allow everything." Volume is not quality.
+**Configuration confidence** asks: *"Are our security controls properly configured?"*
 
-**4. Number of SIEM feeds**
+This breaks down into several concrete checks:
+- **Are the security controls actually running?** A classic failure case: a developer opens a test port for debugging and accidentally leaves it open. That's now a live risk sitting in production, invisible unless someone is specifically checking for it.
+- **Are changes happening outside policy?** Unauthorized changes — even well-intentioned ones — reduce confidence in the overall security posture, because they represent drift from the known, audited configuration.
+- **Are tools configured to best practice?** Security tools are not "install and forget." They require continuous review, because default configurations are rarely optimal and threat landscapes shift.
+- **Are we actually using the tool's features?** This one is surprisingly common: many companies use only 30-40% of the features in the security products they've already purchased. A specific and very real example — if 70-80% of network traffic is encrypted (which is now the norm) and SSL/TLS inspection isn't enabled, that majority of traffic is completely invisible to analysts, regardless of how good the SIEM is.
 
-More data ≠ better security. If that data isn't being used, analyzed, or acted on — it's noise. Noise causes alert fatigue. Alert fatigue causes misses.
+**Operational confidence** asks: *"Are our people and processes actually ready to handle a breach?"*
 
-### Good metrics — the two confidence categories
+- **Events Per Analyst Hour (EPAH).** The normal, sustainable range is roughly 8-13 events per hour. If an analyst is handling something like 100 events per hour, that is not a sign of high productivity — it's a sign they're overwhelmed and investigations are being rushed. This is an important reframe: EPAH measures workload, not performance, and using it as a performance ranking metric produces the exact same gaming behavior described above for MTTR.
+- **Are repeat incidents happening?** If the same alert keeps reappearing, it means the underlying controls aren't being properly updated after the first occurrence — the team is treating symptoms, not fixing root causes.
+- **Are known threats reaching the SOC at all?** Known threats — ones already documented in threat intelligence — should ideally be blocked automatically before a human analyst ever needs to see them. If the SOC is seeing them anyway, that's a sign prevention controls failed somewhere upstream, not a sign the SOC is doing a good job catching them.
 
-**Category 1: Configuration confidence**
+### Lab notes
 
-> *"Are our security controls properly configured?"*
+I've started informally tracking my own EPAH-equivalent in the lab — logging roughly how many Wazuh alerts I review and resolve per session. It's not a rigorous measurement and the lab obviously generates far fewer alerts than a real production environment, but the goal is to build an intuitive feel for analyst workload and pacing before doing this professionally, rather than learning that lesson cold on the job.
 
-Critical questions:
+---
 
-- Are the security controls actually running?
-- Are changes happening outside policy? (Unauthorized changes reduce confidence)
-- Are tools configured to best practice?
-- Are we actually using the features we paid for?
+## 7. Reporting and Executive Communication
 
-**The 30-40% problem:** Many companies use only 30-40% of the features in the security tools they've purchased. If 70-80% of your traffic is encrypted and SSL inspection isn't enabled, that traffic is invisible to your analysts. You're paying for visibility you don't have.
+Detection and response work doesn't speak for itself to leadership — it has to be communicated, and the way it's communicated matters as much as the work itself.
 
-**Category 2: Operational confidence**
+### What executives actually want to know
 
-> *"Are our people and processes ready to handle a breach?"*
+When a major vulnerability hits the headlines — the kind of thing that shows up in mainstream tech news — leadership's questions are predictably simple, regardless of how technical the underlying issue is:
 
-Key signals:
-
-**Events per Analyst Hour (EPAH)**
-- Normal range: 8-13 events/hour
-- If an analyst is handling 100 events/hour, they're overwhelmed and investigations are rushed
-- This metric measures *workload* — not performance. Don't use it to rank analysts.
-
-**Are repeat incidents happening?**
-If the same alert type keeps appearing, your detection rules aren't being updated. You're playing whack-a-mole instead of patching the hole.
-
-**Are known threats reaching the SOC?**
-Known threats should be blocked automatically at the prevention layer. If the SOC is regularly seeing known-bad signatures, prevention controls failed. That's a different problem from detection.
-
-### Executive and reporting metrics
-
-When a major vulnerability hits headlines, executives ask:
 - Are we affected?
-- What's the impact?
+- What is the impact?
 - What controls are protecting us?
-- How long to fix it?
+- How long will it take to fix?
 
-The SOC needs to be able to answer these quickly. Reporting proves the SOC's value:
+Notice none of these questions are technical in nature. An executive doesn't need to know the CVE number or the exact exploitation mechanism — they need a yes/no on exposure and a timeline. Translating deep technical detail into that kind of clear, decision-ready answer is a skill in its own right, separate from the technical analysis skill.
 
-| Report cadence | What it covers |
-|----------------|---------------|
-| Daily | Operational activities — what happened, what was done |
-| Weekly | Trends and patterns — what's recurring, what's new |
-| Monthly | Overall effectiveness — are we getting better? |
+### Why reporting exists
 
----
+Reporting proves value. Its core function is answering one question: **"What did the SOC actually do?"** Without reporting, all the detection and mitigation work happening inside the SOC is functionally invisible to the rest of the organization — and an invisible function is a function that's vulnerable to budget cuts, since nobody outside the team can see what it's accomplishing.
 
-## 9. What a good SOC actually looks like
+Reporting typically happens at three cadences, each serving a different purpose:
 
-The simple summary from the last page of my notes, which I think is the most honest distillation of everything above:
-
-**A SOC is built on six pillars, but everything ties back to business value.**
-
-Good SOCs:
-
-- ✅ Align with the business mission — they know *why* they exist
-- ✅ Measure meaningful metrics — not vanity numbers
-- ✅ Avoid vanity metrics — no chasing firewall rule counts
-- ✅ Ensure tools are configured properly — not install-and-forget
-- ✅ Ensure people are not overwhelmed — EPAH in the 8-13 range
-- ✅ Provide clear reporting — executives get answers, not excuses
+| Cadence | Primary purpose |
+|---|---|
+| **Daily** | Operational activities — what happened today, what's currently being investigated |
+| **Weekly** | Trends and patterns — is alert volume changing, are certain attack types recurring |
+| **Monthly** | Overall effectiveness — is the SOC measurably improving the organization's security posture over time |
 
 ---
 
-## Navigation
+## 8. Module Summary
 
-```
-SOC Analyst Notes/
-├── README.md                ← you are here (main repo overview)
-└── SOC Module One/
-    └── README.md            ← this file
-```
+A SOC is built on six pillars, but every one of them ultimately ties back to a single governing idea: business value. A SOC that can't demonstrate it's reducing business risk isn't succeeding, regardless of how sophisticated its tooling is.
+
+The traits that separate a genuinely good SOC from one that just looks good on paper:
+
+- It aligns its day-to-day work with the actual business mission, not just technical activity for its own sake
+- It measures things that matter and explicitly avoids vanity metrics that can be gamed
+- It ensures tools are properly configured rather than installed and forgotten
+- It protects its people from being overwhelmed, recognizing that an exhausted analyst makes worse decisions
+- It communicates clearly to leadership in terms they can act on
 
 ---
 
-<div align="center">
+## References
 
-**Written from scratch. Tested against real understanding.**  
-*If something here is wrong, open an issue — I want to know.*
+1. **Personal handwritten notes** — Module 1, written while studying the Palo Alto Beacon course material (source scan linked at the top of this document)
+2. **Palo Alto Beacon** — the primary course this module's structure and core concepts are drawn from
+3. Palo Alto Networks, *"The Six Pillars of Effective Security Operations: A Method for Evaluation"* — paloaltonetworks.com/blog/2020/01/cortex-security-operations — the original published source for the Six Pillars framework referenced in Section 5
+4. MITRE ATT&CK® — attack.mitre.org — the industry-standard knowledge base of adversary tactics and techniques, referenced going forward for MITRE mapping work in later modules of this series
+5. Wazuh official documentation — documentation.wazuh.com — referenced for the SIEM configuration work described in the Lab Notes throughout this document
 
-</div>
+---
+
+## Lab Evidence Checklist
+
+This module references lab work at several points above. Screenshots to be added as they're captured:
+
+- [ ] Wazuh dashboard overview (Section 1 — unified architecture in practice)
+- [ ] Brute-force alert in Wazuh (Section 2 — Identify step)
+- [ ] Custom decoder/rule written to reduce false positives (Section 2 — Continuously Improve step)
+- [ ] Telegram integration receiving a live Wazuh alert (Section 3 — orchestration in practice)
+- [ ] Wazuh agent list showing both Windows and Ubuntu agents (Section 4 — SIEM centralization)
